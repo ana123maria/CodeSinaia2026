@@ -1,0 +1,17 @@
+# general-use packages
+notebook
+jupyterlab
+
+# packages needed for the ML track
+torch
+torchvision
+matplotlib
+numpy
+scikit-learn
+seaborn
+
+# packages needed for the SE track
+streamlit
+sqlite3
+socket
+threading
