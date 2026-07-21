@@ -1,2 +1,4 @@
 # External dependencies for my-own-whatsapp
+
 Pillow>=10.0.0
+argon2

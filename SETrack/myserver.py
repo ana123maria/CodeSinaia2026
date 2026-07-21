@@ -106,7 +106,7 @@ def recv_packet(conn, buffer):
 
 def user_pair(id1, id2):
     """TODO: Aranjeaza cele doua id-uri in ordine stabila (user1 < user2), la fel
-    cum facea codul vechi cu min/max pentru tabelul friendship."""
+    ca in baza de date, si returneaza-le ca tuple (user1, user2)"""
     pass
 
 
@@ -344,5 +344,6 @@ def get_msg(conn):
 
 
 while True:
+    pass
     #TODO: accepta o conexiune si saleaza conexiunea si adresa. Creaza un print unde vei scrie cu ce adresa s a efectuat conexiunea
     #TODO: Creaza un thread care are target functia get_msg, args conn si este un daemon. Porneste thread ul
