@@ -8,11 +8,20 @@ from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerifyMismatchError
 
 #region Socket
-#TODO: Creati conexiunea socket
-
-#TODO: dati bind pe 0.0.0.0 si portul 3000, apoi listen
+KEY="cheie"
 clients = {}  # dictionar pentru clientii conectati {username: {"conn": conn, "lock": Lock, "user_id": id}}
 clients_lock = threading.Lock()
+
+#TODO: Creati conexiunea socket
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+#TODO: dati bind pe 0.0.0.0 si portul 3000, apoi listen
+HOST = "0.0.0.0"
+PORT = 3000
+server_socket.bind((HOST, PORT))
+server_socket.listen(1)
+print(f"Server is listening on {HOST}:{PORT}")
 #endregion
 
 #region SQL
@@ -92,6 +101,10 @@ def recv_packet(conn, buffer):
     """TODO:    itereaza in buffer cat timp \n nu este in buffer (HINT: \n trebuie sa fie de tip byte). 
                 Vei avea o variabila chunk care primeste 4MB.Trateaza cazul daca chunk e gol sa returnezi none si buffer.
                 Variabila buffer va contine toate chunk urile"""
+    while b"\n" not in buffer:
+        chunk = conn.recv(4 * 1024 * 1024)
+        if not chunk:  #clintul se deconecteaza
+            return None, buffer
 
 
     raw_line, buffer = buffer.split(b"\n", 1)
@@ -107,6 +120,7 @@ def recv_packet(conn, buffer):
 def user_pair(id1, id2):
     """TODO: Aranjeaza cele doua id-uri in ordine stabila (user1 < user2), la fel
     ca in baza de date, si returneaza-le ca tuple (user1, user2)"""
+    return (min(id1, id2), max(id1, id2))
     pass
 
 
@@ -125,6 +139,14 @@ def get_msg(conn):
         """#TODO: Preia payload si buffer cu recv_packet. 
         Adauga un break daca nu exista obiectul payload si 
         un continue daca payload e gol"""
+        payload, buffer = recv_packet(conn, buffer)
+        # Adauga un break daca nu exista obiectul payload (clientul s-a deconectat)
+        if payload is None:
+            break
+        # Adauga un continue daca payload e gol ({})
+        if not payload:
+            continue
+
 
 
         msg_type = str(payload.get("type", "")).upper()
