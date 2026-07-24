@@ -43,7 +43,7 @@ from network_client import ChatClient, encrypt_text, MAX_IMAGE_BYTES
 from conversation_store import ConversationStore, utc_timestamp
 
 ROOT_DIR = Path(__file__).parent
-GITHUB_URL = ""  # placeholder
+GITHUB_URL = "https://github.com/ana123maria/CodeSinaia2026"  # placeholder
 
 
 # ----------------------------------------------------------------------
@@ -114,11 +114,11 @@ class App:
 
         # Username field sits on the rectangle at (x1, y1 -> x2, y2)
         self.login_username_entry = tk.Entry(window, bd=0, highlightthickness=0, bg="#C5C5C5")
-        self.login_username_entry.place(x=x1, y=y1, width=x2-x1, height=y2-y1)  # TODO: replace x1, y1, x2, y2 with actual coordinates
+        self.login_username_entry.place(x=16, y=65, width=370, height=16)  # TODO: replace x1, y1, x2, y2 with actual coordinates
 
         # Password field sits on the rectangle at (x1, y1 -> x2, y2)
         self.login_password_entry = tk.Entry(window, bd=0, highlightthickness=0, bg="#C5C5C5", show="*")
-        self.login_password_entry.place(x=x1, y=y1, width=x2-x1, height=y2-y1)  # TODO: replace x1, y1, x2, y2 with actual coordinates
+        self.login_password_entry.place(x=16, y=117, width=370, height=16)  # TODO: replace x1, y1, x2, y2 with actual coordinates
 
         # Small error label between the password field and the footer
         self.login_error_label = tk.Label(window, text="", fg="#D33A3A", bg="#D9D9D9", font=("Inter", 11))
@@ -129,7 +129,7 @@ class App:
         self.login_module.button_1.configure(command=self._handle_login_submit)
         self.login_module.button_2.configure(command=self._handle_go_to_signup)
 
-        window.bind("<Return>", lambda _event: self._handle_login_submit())
+        window.bind("<Return>", lambda _event: self._handle_login_submit()) #enter=submit
         self.login_username_entry.focus_set()
         window.protocol("WM_DELETE_WINDOW", lambda: sys.exit())
 
@@ -177,11 +177,11 @@ class App:
 
         self.user_id = int(response.get("user_id", 0))
         self.current_username = str(response.get("username", username))
-        self._next_screen = "TODO" #TODO: main screen
+        self._next_screen = "main" #TODO: main screen
         window.quit()
 
     def _handle_go_to_signup(self):
-        self._next_screen = "TODO" #TODO: signup screen
+        self._next_screen = "signup" #TODO: signup screen
         self.login_module.window.quit()
 
     # ------------------------------------------------------------------
@@ -194,13 +194,13 @@ class App:
         window = self.signup_module.window
 
         self.signup_username_entry = tk.Entry(window, bd=0, highlightthickness=0, bg="#C5C5C5")
-        self.signup_username_entry.place(x=x1, y=y1, width=x2-x1, height=y2-y1) #TODO: replace with actual coordinates
+        self.signup_username_entry.place(x=16, y=60, width=370, height=16) #TODO: replace with actual coordinates
 
         self.signup_password_entry = tk.Entry(window, bd=0, highlightthickness=0, bg="#C5C5C5", show="*")
-        self.signup_password_entry.place(x=x1, y=y1, width=x2-x1, height=y2-y1) #TODO: replace with actual coordinates
+        self.signup_password_entry.place(x=16, y=100, width=370, height=16) #TODO: replace with actual coordinates
 
         self.signup_repeat_entry = tk.Entry(window, bd=0, highlightthickness=0, bg="#C5C5C5", show="*")
-        self.signup_repeat_entry.place(x=x1, y=y1, width=x2-x1, height=y2-y1) #TODO: replace with actual coordinates
+        self.signup_repeat_entry.place(x=16, y=141, width=370, height=16) #TODO: replace with actual coordinates
 
         self.signup_error_label = tk.Label(window, text="", fg="#D33A3A", bg="#D9D9D9", font=("Inter", 11))
         self.signup_error_label.place(x=16.0, y=143.0, width=370.0, height=0.0)
@@ -218,10 +218,11 @@ class App:
         window.destroy()
 
         if self._next_screen == "login":
-            pass
             #TODO show login screen
-            
+            self.show_login()
         #TODO altfel dacă e main, show main
+        elif self._next_screen == "main":
+            self.show_main()
         
 
     def _handle_go_to_login(self):
@@ -269,7 +270,7 @@ class App:
 
         # --- Search bar (X1, Y1 -> X2, Y2): type a username, press the magnifier (button_2) ---
         self.search_entry = tk.Entry(window, bd=0, highlightthickness=0, bg="#C5C5C5")
-        self.search_entry.place(x=x1, y=y1, width=x2-x1, height=y2-y1)  # TODO: replace x1, y1, x2, y2 with actual coordinates
+        self.search_entry.place(x=7, y=22, width=165, height=50)  # TODO: replace x1, y1, x2, y2 with actual coordinates
         self.main_module.button_2.configure(command=self._handle_add_friend)
 
         # --- User panel (X1, Y1 -> X2, Y2): "{username}\nID: {id}" ---
@@ -279,26 +280,26 @@ class App:
             bg="#C5C5C5",
             justify="center",
         )
-        self.user_panel_label.place(x=x1, y=y1, width=x2-x1, height=y2-y1)  # TODO: replace x1, y1, x2, y2 with actual coordinates
+        self.user_panel_label.place(x=663, y=22, width=121, height=50)  # TODO: replace x1, y1, x2, y2 with actual coordinates
 
         # --- "Chats" list (X1, Y1 -> X2, Y2): accepted friends, click = open conversation ---
         self.chats_frame = tk.Frame(window, bg="#C5C5C5")
-        self.chats_frame.place(x=x1, y=y1, width=x2-x1, height=y2-y1)  # TODO: replace x1, y1, x2, y2 with actual coordinates
+        self.chats_frame.place(x=7, y=118, width=121, height=242)  # TODO: replace x1, y1, x2, y2 with actual coordinates
 
         # --- "Friends" list (X1, Y1 -> X2, Y2): pending incoming requests only ---
         self.friends_frame = tk.Frame(window, bg="#C5C5C5")
-        self.friends_frame.place(x=x1, y=y1, width=x2-x1, height=y2-y1)  # TODO: replace x1, y1, x2, y2 with actual coordinates
+        self.friends_frame.place(x=7, y=391, width=121, height=159)  # TODO: replace x1, y1, x2, y2 with actual coordinates
 
         # --- Conversation (X1,Y1 -> X2,Y2) ---
         self.conversation_text = tk.Text(window, bd=0, highlightthickness=0)
-        self.conversation_text.place(x=x1, y=y1, width=x2-x1, height=y2-y1)  # TODO: replace x1, y1, x2, y2 with actual coordinates
+        self.conversation_text.place(x=154, y=118, width=630, height=385)  # TODO: replace x1, y1, x2, y2 with actual coordinates
         self.conversation_text.bind("<Key>", lambda _e: "break")
         self.conversation_text.bind("<<Paste>>", lambda _e: "break")
         self.conversation_text.configure(state=tk.DISABLED)
 
         # --- Message entry (X1,Y1 -> X2,Y2) ---
         self.message_entry = tk.Entry(window, bd=0, highlightthickness=0, bg="#C5C5C5")
-        self.message_entry.place(x=x1, y=y1, width=x2-x1, height=y2-y1)  # TODO: replace x1, y1, x2, y2 with actual coordinates
+        self.message_entry.place(x=154, y=512, width=509, height=33)  # TODO: replace x1, y1, x2, y2 with actual coordinates
         window.bind("<Return>", lambda _event: self._handle_send_text())
 
         # --- button_1 = Trimite, button_3 = Agrafa, button_4 = GitHub ---
@@ -340,6 +341,10 @@ class App:
             
             #TODO if is_online then color = green else color = red
             color = None
+            if is_online():
+                color = "#3AD360"
+            else:
+                color = "#D33A3A"
             
             status_text = "Online" if is_online else "Offline"
             tk.Button(

@@ -32,16 +32,16 @@ def decode_text_for_display(raw_value: str) -> str:
     try:
         # TODO: use the decrypt_text() function here to decrypt the raw_value
         # and return the decrypted text instead of the raw_value.
-        pass
+        return decrypt_text(raw_value)
     except Exception:
         # If decryption fails, we don't want to crash the app. Just return the raw value.
-        pass
+        return raw_value
 
 
 def save_image_from_payload(encrypted_payload: str) -> dict:
     try:
         # TODO: use the decrypt_text() function here to decrypt the encrypted_payload
-        decoded_json = None
+        decoded_json = decrypt_text(encrypted_payload)
         image_payload = json.loads(decoded_json)
         image_bytes = base64.b64decode(image_payload["data"].encode("utf-8"), validate=True)
 
