@@ -4,13 +4,24 @@ import socket
 import sqlite3
 import threading
 
+from argon2 import PasswordHasher
+from argon2.exceptions import InvalidHashError, VerifyMismatchError
+
 #region Socket
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-s.bind(("0.0.0.0", 3000))
-s.listen()
+KEY="cheie"
 clients = {}  # dictionar pentru clientii conectati {username: {"conn": conn, "lock": Lock, "user_id": id}}
 clients_lock = threading.Lock()
+
+#TODO: Creati conexiunea socket
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+#TODO: dati bind pe 0.0.0.0 si portul 3000, apoi listen
+HOST = "0.0.0.0"
+PORT = 3000
+server_socket.bind((HOST, PORT))
+server_socket.listen(1)
+print(f"Server is listening on {HOST}:{PORT}")
 #endregion
 
 #region SQL
@@ -59,6 +70,22 @@ if "kind" not in existing_columns:
 
 print("[SERVER] Ascult pe portul 3000...")
 
+ph = PasswordHasher(time_cost=3, memory_cost=65536, parallelism=4, hash_len=32, salt_len=16)
+
+
+def hash_password(password: str) -> str:
+    return ph.hash(password)
+
+
+def verify_password(stored_password: str, password: str) -> bool:
+    if not stored_password:
+        return False
+    if stored_password.startswith("$argon2"):
+        try:
+            return ph.verify(stored_password, password)
+        except (VerifyMismatchError, InvalidHashError):
+            return False
+    return stored_password == password
 
 def send_json(conn, lock, payload):
     wire = (json.dumps(payload, separators=(",", ":")) + "\n").encode("utf-8")
@@ -69,13 +96,16 @@ def send_json(conn, lock, payload):
 def recv_packet(conn, buffer):
     """Citeste din socket pana gaseste un mesaj complet (delimitat de \\n)
     si il transforma in dictionar. Clientul trimite pachetele cu un \\n la
-    final, deci nu putem sa facem json.loads pe un singur recv() ca inainte -
+    final, deci nu putem sa facem json.loads pe un singur recv() -
     un mesaj poate veni fragmentat, sau doua mesaje pot veni in acelasi recv()."""
+    """TODO:    itereaza in buffer cat timp \n nu este in buffer (HINT: \n trebuie sa fie de tip byte). 
+                Vei avea o variabila chunk care primeste 4MB.Trateaza cazul daca chunk e gol sa returnezi none si buffer.
+                Variabila buffer va contine toate chunk urile"""
     while b"\n" not in buffer:
-        chunk = conn.recv(4096)
-        if not chunk:
+        chunk = conn.recv(4 * 1024 * 1024)
+        if not chunk:  #clintul se deconecteaza
             return None, buffer
-        buffer += chunk
+
 
     raw_line, buffer = buffer.split(b"\n", 1)
     if not raw_line:
@@ -88,9 +118,10 @@ def recv_packet(conn, buffer):
 
 
 def user_pair(id1, id2):
-    """Aranjeaza cele doua id-uri in ordine stabila (user1 < user2), la fel
-    cum facea codul vechi cu min/max pentru tabelul friendship."""
-    return (id1, id2) if id1 < id2 else (id2, id1)
+    """TODO: Aranjeaza cele doua id-uri in ordine stabila (user1 < user2), la fel
+    ca in baza de date, si returneaza-le ca tuple (user1, user2)"""
+    return (min(id1, id2), max(id1, id2))
+    pass
 
 
 def get_online(username):
@@ -105,11 +136,18 @@ def get_msg(conn):
     buffer = b""
 
     while True:
+        """#TODO: Preia payload si buffer cu recv_packet. 
+        Adauga un break daca nu exista obiectul payload si 
+        un continue daca payload e gol"""
         payload, buffer = recv_packet(conn, buffer)
+        # Adauga un break daca nu exista obiectul payload (clientul s-a deconectat)
         if payload is None:
             break
+        # Adauga un continue daca payload e gol ({})
         if not payload:
             continue
+
+
 
         msg_type = str(payload.get("type", "")).upper()
         print(f"Mesaj primit: {msg_type}")
@@ -117,35 +155,25 @@ def get_msg(conn):
         if msg_type == "AUTH":
             user = payload.get("username", "").strip()
             password = payload.get("password", "")
-            if not user or not password:
-                send_json(conn, send_lock, {"type": "ERROR", "message": "Username and password are required."})
-                continue
+            #TODO: daca nu exista user sau parola trimite un json de tip ERROR si dupa continua
+
 
             cursor.execute("SELECT id, password FROM users WHERE username=?", (user,))
             row = cursor.fetchone()
-
-            if row is None:
-                # userul nu exista inca -> il inregistram automat
-                try:
-                    cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (user, password))
-                    sql.commit()
-                    user_id = cursor.lastrowid
-                except sqlite3.IntegrityError:
-                    cursor.execute("SELECT id, password FROM users WHERE username=?", (user,))
-                    row = cursor.fetchone()
-                    if row is None:
-                        send_json(conn, send_lock, {"type": "ERROR", "message": "Could not create user."})
-                        continue
-                    user_id, saved_password = row
-                    if saved_password != password:
-                        send_json(conn, send_lock, {"type": "ERROR", "message": "PAROLA ESTE GRESITA"})
-                        continue
-            else:
-                user_id, saved_password = row
-                if saved_password != password:
-                    send_json(conn, send_lock, {"type": "ERROR", "message": "PAROLA ESTE GRESITA"})
-                    continue
-
+            """TODO: Daca nu exista acest user (vezi cele 2 linii de mai sus), creaza un try except unde:
+                - criptezi parola, inserezi user si parola in DB, dai commit()
+                in except vei arunca sqlite3.IntegrityError si vei face in acest caz:
+                -selectezi id si parola din username pentru username ul salvat in variabila user
+                -preia numai 1 entry si trimite cu json un mesaj de tip ERROR si continua altfel salveaza in user_id si saved_password din row
+                -verifica parola
+            """
+            """TODO: Daca exista o intrare:-
+                - salveaza user_id si saved_password din row
+                - verifica parola si continua daca e gresita
+                - daca parola nu incepe cu argon2, cursor.execute updateaza campul password 
+                    din tabelul users unde id ul este user_id cu parola hashed. Da commit
+            """
+            
             with clients_lock:
                 if user in clients:
                     send_json(conn, send_lock, {"type": "ERROR", "message": "Userul este deja logat!"})
@@ -281,18 +309,15 @@ def get_msg(conn):
             target_username = payload.get("to", "").strip()
             kind = payload.get("kind", "text")
             content = payload.get("content", "")
-            if not target_username or not content:
-                send_json(conn, send_lock, {"type": "ERROR", "message": "Message target and content are required."})
-                continue
-            if kind not in ("text", "image"):
-                send_json(conn, send_lock, {"type": "ERROR", "message": "Unsupported message type."})
-                continue
+            #TODO: daca nu e username sau content, foloseste send_json() cu tip ERROR, apoi continua
+            
+            #TODO: daca tipul (kind) mesajului nu e text sau image, trimite o eroare, apoi continue
 
             cursor.execute("SELECT id FROM users WHERE username=?", (target_username,))
             res = cursor.fetchone()
-            if not res:
-                send_json(conn, send_lock, {"type": "ERROR", "message": "Target user does not exist."})
-                continue
+
+            #TODO: daca nu este res, eroare, apoi continue
+
 
             target_id = res[0]
             user1, user2 = user_pair(current_user_id, target_id)
@@ -325,8 +350,7 @@ def get_msg(conn):
                     with clients_lock:
                         if clients.get(target_username, {}).get("conn") is recipient["conn"]:
                             del clients[target_username]
-
-            send_json(conn, send_lock, {"type": "MESSAGE_SENT", "to": target_username, "kind": kind, "timestamp": timestamp})
+            #TODO: Trimite cu functia send_json message_sent target_username, kind si timestamp
 
         elif msg_type == "CLOSE":
             break
@@ -342,7 +366,6 @@ def get_msg(conn):
 
 
 while True:
-    conn, addr = s.accept()
-    print(f"[SERVER] Conexiune stabilita cu {addr}")
-    clientThread = threading.Thread(target=get_msg, args=(conn,), daemon=True)
-    clientThread.start()
+    pass
+    #TODO: accepta o conexiune si saleaza conexiunea si adresa. Creaza un print unde vei scrie cu ce adresa s a efectuat conexiunea
+    #TODO: Creaza un thread care are target functia get_msg, args conn si este un daemon. Porneste thread ul

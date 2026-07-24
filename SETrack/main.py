@@ -341,7 +341,7 @@ class App:
             
             #TODO if is_online then color = green else color = red
             color = None
-            if is_online():
+            if is_online:
                 color = "#3AD360"
             else:
                 color = "#D33A3A"
